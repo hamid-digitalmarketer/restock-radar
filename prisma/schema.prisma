@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+  datasource db {
+    provider = "sqlite"
+    url      = env("DATABASE_URL")
+  }
+}
+
+model Shop {
+  id             Int      @id @default(autoincrement())
+  shopDomain     String   @unique
+  accessToken    String
+  scope          String
+  installedAt    DateTime @default(now())
+  uninstalledAt  DateTime?
+  emailFromName  String   @default("Restock Radar")
+  emailReplyTo   String?
+  brandColor     String   @default("#000000")
+  logoUrl        String?
+  plan           String   @default("free")
+  isInstalled    Boolean  @default(true)
+
+  subscribers    Subscriber[]
+  notifications  Notification[]
+
+  @@index([shopDomain])
+}
+
+model Subscriber {
+  id           Int           @id @default(autoincrement())
+  shopDomain   String
+  shop         Shop           @relation(fields: [shopDomain], references: [shopDomain])
+  email        String
+  phone        String?
+  productId    String
+  variantId    String
+  productTitle String
+  productHandle String
+  status       String        @default("active") // active, notified, purchased, unsubscribed
+  createdAt    DateTime      @default(now())
+  notifiedAt   DateTime?
+
+  notifications Notification[]
+
+  @@unique([email, variantId, shopDomain])
+  @@index([shopDomain, variantId])
+  @@index([status])
+}
+
+model Notification {
+  id           Int         @id @default(autoincrement())
+  subscriberId Int
+  subscriber   Subscriber  @relation(fields: [subscriberId], references: [id])
+  shopDomain   String
+  shop         Shop        @relation(fields: [shopDomain], references: [shopDomain])
+  productId    String
+  variantId    String
+  type         String      @default("email") // email, sms
+  status       String      @default("pending") // pending, sent, failed, clicked
+  sentAt       DateTime?
+  clickedAt    DateTime?
+  purchasedAt  DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@index([shopDomain, status])
+  @@index([subscriberId])
+}
+
+model RestockEvent {
+  id           Int      @id @default(autoincrement())
+  shopDomain   String
+  productId    String
+  variantId    String
+  inventoryQty Int
+  triggeredAt  DateTime @default(now())
+  notificationsSent Int  @default(0)
+
+  @@index([shopDomain, triggeredAt])
+}
